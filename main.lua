@@ -1,4 +1,5 @@
 function love.load()
+	love.math.setRandomSeed(os.time())
 	gameFont = love.graphics.newFont("fonts/Satoshi-Variable.ttf", 15, "normal", 2)
 
 	bump = require("library/bump/bump")
@@ -60,7 +61,8 @@ function love.update(dt)
 			player.x, player.y = player.targetX, player.targetY
 			player.isMoving = false
 
-			world:update(player, player.x, player.y)
+			-- update player postion directly to avoid cliiping
+			world:update(player, player.targetX, player.targetY)
 
 			if #player.bufferedInput > 0 then
 				local nextDir = table.remove(player.bufferedInput, 1)
@@ -69,21 +71,39 @@ function love.update(dt)
 		end
 	end
 
-	for _, stone in ipairs(stones) do
-		if stone.isMoving then
-			stone.moveTimer = math.min(stone.moveTimer + dt, stone.moveDuration)
-			local t = stone.moveTimer / stone.moveDuration
+	for _, s in ipairs(stones) do
+		s.anim:update(dt)
+		if s.isMoving then
+			s.moveTimer = math.min(s.moveTimer + dt, s.moveDuration)
+			local t = s.moveTimer / s.moveDuration
 
-			stone.x = stone.startX + (stone.targetX - stone.startX) * t
+			s.x = s.startX + (s.targetX - s.startX) * t
 
 			if t >= 1 then
-				stone.x = stone.targetX
-				stone.isMoving = false
+				s.x = s.targetX
+				s.isMoving = false
 
-				world:update(stone, stone.x, stone.y)
+				world:update(s, s.x, s.y)
+				s.anim:pause()
+			end
+		elseif s.isFalling then
+			s.fallTimer = math.min(s.fallTimer + dt, s.fallDuration)
+			local t = s.fallTimer / s.fallDuration
+
+			s.y = s.startY + (s.targetY - s.startY) * t
+
+			if t >= 1 then
+				s.y = s.targetY
+				s.isFalling = false
+
+				world:update(s, s.x, s.y)
+				s.anim:pause()
 			end
 		end
 	end
+
+	checkStoneGravity()
+	checkStoneonStone()
 end
 
 function love.draw()
@@ -92,7 +112,7 @@ function love.draw()
 	gameMap:drawLayer(gameMap.layers["walls"])
 	gameMap:drawLayer(gameMap.layers["statues"])
 	drawStones()
-	drawGrass()
+	--drawGrass()
 	love.graphics.rectangle("line", player.x, player.y, player.w, player.h)
 	for _, wall in ipairs(walls) do
 		love.graphics.rectangle("line", wall.x, wall.y, wall.w, wall.h)
@@ -100,9 +120,9 @@ function love.draw()
 	for _, stone in ipairs(stones) do
 		love.graphics.rectangle("line", stone.x, stone.y, stone.w, stone.h)
 	end
-	for _, grass in ipairs(grassTable) do
-		love.graphics.rectangle("line", grass.x, grass.y, grass.w, grass.h)
-	end
+	--for _, grass in ipairs(grassTable) do
+	--love.graphics.rectangle("line", grass.x, grass.y, grass.w, grass.h)
+	--end
 	cam:detach()
 	love.graphics.setFont(gameFont)
 	love.graphics.printf(
@@ -161,21 +181,22 @@ function tryMove(dir)
 
 	local canMove = true
 	if len > 0 then
-		for i, cols in ipairs(cols) do
+		for i, col in ipairs(cols) do
 			if col.other.type == "stone" and not col.other.isMoving then
 				if tryMoveStone(col.other, dir) then
 					canMove = true
 				else
 					canMove = false
+					break -- Exit loop immediately
 				end
-			elseif col.other.type == "grass" then
-				canMove = true
+				-- elseif col.other.type == "grass" then
+				-- canMove = true
 				-- trigger animation
 				-- world:remove(col.other)
-				if col.other == grass then
-					-- deletion issue
-					-- grass = nil
-				end
+				-- if col.other == grass then
+				-- deletion issue
+				-- grass = nil
+				-- end
 			else
 				canMove = false
 			end
@@ -216,9 +237,83 @@ function tryMoveStone(s, dir)
 		s.startX = s.x
 		s.targetX = goalX
 		s.moveTimer = 0
+
+		s.anim:gotoFrame(1)
+		s.anim:resume()
 		return true
 	end
 	return false
+end
+
+function checkStoneGravity()
+	for _, s in ipairs(stones) do
+		-- s.isMoving and s.isFalling are both false
+		if not s.isMoving and not s.isFalling then
+			local downY = s.y + 32
+			local _, _, cols, len = world:check(s, s.x, downY)
+
+			if len == 0 then
+				s.startY = s.y
+				s.isFalling = true
+				s.targetY = downY
+				s.fallTimer = 0
+
+				s.anim:gotoFrame(1)
+				s.anim:resume()
+			end
+		end
+	end
+end
+
+-- this function checks whether a stone is on top of another and checks if it should fall accordingly
+function checkStoneonStone()
+	local grid = 32
+
+	for _, s in ipairs(stones) do
+		if not s.isMoving and not s.isFalling then
+			local downY = s.y + grid
+			local _, _, cols, len = world:check(s, s.x, downY)
+
+			for i, col in ipairs(cols) do
+				if col.other.type == "stone" and not col.other.isMoving and not col.other.isFalling then
+					local left = s.x - grid
+					local right = s.x + grid
+
+					local _, _, _, lSide = world:check(s, left, s.y)
+					local _, _, _, lDiag = world:check(s, left, s.y + grid)
+					local _, _, _, rSide = world:check(s, right, s.y)
+					local _, _, _, rDiag = world:check(s, right, s.y + grid)
+
+					local canGoRight = (rSide == 0 and rDiag == 0)
+					local canGoLeft = (lSide == 0 and lDiag == 0)
+
+					if canGoRight and canGoLeft then
+						if love.math.random() > 0.5 then
+							s.targetX = right
+						else
+							s.targetX = left
+						end
+						s.isMoving = true
+					elseif canGoRight then
+						s.targetX = right
+						s.isMoving = true
+					elseif canGoLeft then
+						s.targetX = left
+						s.isMoving = true
+					end
+
+					if s.isMoving then
+						s.startX = s.x
+						s.moveTimer = 0
+
+						s.anim:gotoFrame(1)
+						s.anim:resume()
+						break
+					end
+				end
+			end
+		end
+	end
 end
 
 function loadMap(mapName)
@@ -244,9 +339,9 @@ function loadMap(mapName)
 
 	world:add(player, player.x, player.y, player.w, player.h)
 
-	for _, obj in pairs(gameMap.layers["grass_obj"].objects) do
-		spawnGrass(obj.x, obj.y, obj.width, obj.height)
-	end
+	-- for _, obj in pairs(gameMap.layers["grass_obj"].objects) do
+	-- spawnGrass(obj.x, obj.y, obj.width, obj.height)
+	-- end
 end
 
 function spawnWall(x, y, width, height)
@@ -276,8 +371,11 @@ function spawnStone(x, y, width, height)
 			targetY = y,
 			startX = x,
 			startY = y,
-			moveDuration = 0.15,
+			moveDuration = 0.25,
 			moveTimer = 0,
+			isFalling = false,
+			fallTimer = 0,
+			fallDuration = 0.3,
 		}
 		stone.anim:pause()
 		world:add(stone, x, y, width, height)
@@ -298,16 +396,6 @@ function spawnGrass(x, y, width, height)
 		grass.anim:pause()
 		world:add(grass, x, y, width, height)
 		table.insert(grassTable, grass)
-	end
-end
-
-function checkStoneGravity()
-	for _, stone in ipairs(stones) do
-		local downY = stone.y + 32
-		local actualX, actualY, cols, len = world:move(stone, stone.x, downY)
-		stone.isMoving = true
-		stone.x = actualX
-		stone.y = actualY
 	end
 end
 

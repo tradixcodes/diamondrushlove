@@ -14,9 +14,12 @@ function love.load()
 	player = {}
 	player.x, player.y = 100, 100
 	player.w, player.h = 32, 32
-	player.isMoving = false
+	player.targetX, player.targetY = player.x, player.y
+	player.startX, player.startY = player.x, player.y
 	player.bufferedInput = {}
-	--player.targetX, player.targetY = 0, 0
+	player.moveTimer = 0
+	player.moveDuration = 0.15
+	player.isMoving = false
 
 	walls = {}
 	stones = {}
@@ -33,12 +36,6 @@ function love.load()
 	animations.stoneRoll = anim8.newAnimation(stoneGrid("1-3", 1, "1-3", 2, "1-2", 3), 0.1)
 	animations.destroyGrass = anim8.newAnimation(grassGrid("1-8", 1), 0.25)
 
-	--[[platform = {}
-    platform.x, platform.y = 300, 300
-    platform.w, platform.h = 256, 64
-
-    world:add(platform, platform.x, platform.y, platform.w, platform.h)]]
-
 	loadMap("ankgor_watt_intro_level")
 end
 
@@ -52,7 +49,41 @@ function love.update(dt)
 
 	cam:lookAt(camX, camY)
 
-	checkStoneGravity()
+	if player.isMoving then
+		player.moveTimer = math.min(player.moveTimer + dt, player.moveDuration)
+		local t = player.moveTimer / player.moveDuration
+
+		player.x = player.startX + (player.targetX - player.startX) * t
+		player.y = player.startY + (player.targetY - player.startY) * t
+
+		if t >= 1 then
+			player.x, player.y = player.targetX, player.targetY
+			player.isMoving = false
+
+			world:update(player, player.x, player.y)
+
+			if #player.bufferedInput > 0 then
+				local nextDir = table.remove(player.bufferedInput, 1)
+				tryMove(nextDir)
+			end
+		end
+	end
+
+	for _, stone in ipairs(stones) do
+		if stone.isMoving then
+			stone.moveTimer = math.min(stone.moveTimer + dt, stone.moveDuration)
+			local t = stone.moveTimer / stone.moveDuration
+
+			stone.x = stone.startX + (stone.targetX - stone.startX) * t
+
+			if t >= 1 then
+				stone.x = stone.targetX
+				stone.isMoving = false
+
+				world:update(stone, stone.x, stone.y)
+			end
+		end
+	end
 end
 
 function love.draw()
@@ -86,6 +117,7 @@ function love.draw()
 end
 
 function love.keypressed(key)
+	-- movement mechanism allows for spam
 	local dir = nil
 
 	if key == "w" or key == "up" then
@@ -99,6 +131,7 @@ function love.keypressed(key)
 	end
 
 	if dir then
+		-- if player.isMoving == false
 		if not player.isMoving then
 			tryMove(dir)
 		else
@@ -124,34 +157,49 @@ function tryMove(dir)
 	local goalX = player.x + dx
 	local goalY = player.y + dy
 
-	local actualX, actualY, cols, len = world:move(player, goalX, goalY)
+	local _, _, cols, len = world:check(player, goalX, goalY)
 
 	local canMove = true
 	if len > 0 then
-		for i, col in ipairs(cols) do
+		for i, cols in ipairs(cols) do
 			if col.other.type == "stone" and not col.other.isMoving then
-				if checkPushStone(col.other, dir) then
+				if tryMoveStone(col.other, dir) then
 					canMove = true
 				else
 					canMove = false
 				end
 			elseif col.other.type == "grass" then
 				canMove = true
+				-- trigger animation
+				-- world:remove(col.other)
+				if col.other == grass then
+					-- deletion issue
+					-- grass = nil
+				end
 			else
 				canMove = false
 			end
 		end
 	end
 
-	if canMove == true then
-		player.x = actualX
-		player.y = actualY
+	if canMove then
+		player.isMoving = true
+		player.startX = player.x
+		player.startY = player.y
+		player.targetX = goalX
+		player.targetY = goalY
+		player.moveTimer = 0
 	end
 end
 
-function checkPushStone(stone, dir)
+-- checks and moves stone(s)
+function tryMoveStone(s, dir)
 	local dx = 0
 	local grid = 32
+
+	if dir == "up" or dir == "down" then
+		return false
+	end
 
 	if dir == "left" then
 		dx = -grid
@@ -159,24 +207,18 @@ function checkPushStone(stone, dir)
 		dx = grid
 	end
 
-	local goalX = stone.x + dx
+	local goalX = s.x + dx
 
-	local actualX, actualY, cols, len = world:check(stone, goalX, stone.y)
+	local _, _, _, len = world:check(s, goalX, s.y)
 
 	if len == 0 then
-		stone.targetX = actualX
-		stone.targetY = actualY
-		pushStone(stone)
+		s.isMoving = true
+		s.startX = s.x
+		s.targetX = goalX
+		s.moveTimer = 0
 		return true
-	else
-		return false
 	end
-end
-
-function pushStone(stone)
-	local _, _, cols, len = world:move(stone, stone.targetX, stone.targetY)
-	stone.x = stone.targetX
-	stone.y = stone.targetY
+	return false
 end
 
 function loadMap(mapName)
@@ -230,8 +272,12 @@ function spawnStone(x, y, width, height)
 			type = "stone",
 			isMoving = false,
 			anim = animations.stoneRoll:clone(),
-			targetX = 0,
-			targetY = 0,
+			targetX = x,
+			targetY = y,
+			startX = x,
+			startY = y,
+			moveDuration = 0.15,
+			moveTimer = 0,
 		}
 		stone.anim:pause()
 		world:add(stone, x, y, width, height)

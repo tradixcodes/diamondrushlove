@@ -39,7 +39,7 @@ function love.load()
 
 	loadMap("ankgor_watt_intro_level")
 
-    love.graphics.setDefaultFilter("nearest", "nearest")
+	love.graphics.setDefaultFilter("nearest", "nearest")
 end
 
 function love.update(dt)

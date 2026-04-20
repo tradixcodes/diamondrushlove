@@ -38,6 +38,8 @@ function love.load()
 	animations.destroyGrass = anim8.newAnimation(grassGrid("1-8", 1), 0.25)
 
 	loadMap("ankgor_watt_intro_level")
+
+    love.graphics.setDefaultFilter("nearest", "nearest")
 end
 
 function love.update(dt)

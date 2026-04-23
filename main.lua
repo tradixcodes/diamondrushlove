@@ -13,18 +13,18 @@ function love.load()
 
 	require("player")
 	require("stones")
-	require("bush")
+	require("bushes")
 	require("utils")
 
 	walls = {}
 	stones = {}
-	bushTable = {}
+	bushes = {}
 
 	grid = 32
 
 	sprites = {}
 	sprites.stoneSprite = love.graphics.newImage("sprites_png/aw_stones_tileset.png")
-	sprites.bushSprite = love.graphics.newImage("sprites_png/grass_animation_tileset.png")
+	sprites.bushSprite = love.graphics.newImage("sprites_png/bush_animation_tileset.png")
 
 	local stoneGrid = anim8.newGrid(32, 32, sprites.stoneSprite:getWidth(), sprites.stoneSprite:getHeight())
 	local bushGrid = anim8.newGrid(44, 35, sprites.bushSprite:getWidth(), sprites.bushSprite:getHeight())
@@ -101,7 +101,7 @@ function loadMap(mapName)
 
 	world:add(player, player.x, player.y, player.w, player.h)
 
-	--[[for _, obj in pairs(gameMap.layers["grass_obj"].objects) do
+	--[[for _, obj in pairs(gameMap.layers["bushes_obj"].objects) do
 		spawnBush(obj.x, obj.y, obj.width, obj.height)
 	end]]
 end
@@ -157,10 +157,6 @@ function spawnBush(x, y, width, height)
 		}
 		bush.anim:pause()
 		world:add(bush, x, y, width, height)
-		table.insert(bushTable, bush)
+		table.insert(bushes, bush)
 	end
-end
-
-function love.conf(t)
-	t.console = true
 end

@@ -50,6 +50,7 @@ function canPlayerMove(dir)
 			if not other.isMoving and not other.isFalling and canPushEntity(other, dir) then
 				--trigger stone movement
 				moveStone(other, dir)
+				return true
 			else
 				return false
 			end
@@ -57,5 +58,39 @@ function canPlayerMove(dir)
 		else
 			return false
 		end
+	end
+end
+
+function attemptPlayerMove(dir)
+	-- Prevent input if the player is already mid-animation
+	if player.isMoving then
+		return
+	end
+
+	if canPlayerMove(dir) then
+		local dx, dy = getDirectionOffset(dir)
+
+		player.startX, player.startY = player.x, player.y
+		player.targetX, player.targetY = player.x + dx, player.y + dy
+		player.moveTimer = 0
+		player.isMoving = true
+	end
+end
+
+function love.keypressed(key)
+	local dir = nil
+
+	if key == "w" or key == "up" then
+		dir = "up"
+	elseif key == "a" or key == "left" then
+		dir = "left"
+	elseif key == "s" or key == "down" then
+		dir = "down"
+	elseif key == "d" or key == "right" then
+		dir = "right"
+	end
+
+	if dir then
+		attemptPlayerMove(dir)
 	end
 end

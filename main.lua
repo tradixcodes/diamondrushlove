@@ -35,6 +35,7 @@ function love.load()
 
 	loadMap("ankgor_watt_intro_level")
 
+	-- use for scaling up sprites if the orginal size is smaller than the rendered/desired
 	--love.graphics.setDefaultFilter("nearest", "nearest")
 end
 

@@ -37,6 +37,17 @@ function canEntityFall(e)
 	return len == 0
 end
 
+function applyGravity(e)
+	e.isFalling = true
+	e.startY = e.y
+	e.targetY = e.y + grid
+	e.fallTimer = 0
+	e.fallDuration = 0.3
+
+	e.anim:gotoFrame(1)
+	e.anim:resume()
+end
+
 function getEntitySlipDir(e)
 	local downY = e.y + grid
 	local left, right = e.x - grid, e.x + grid
@@ -58,15 +69,4 @@ function getEntitySlipDir(e)
 	end
 
 	return nil
-end
-
-function itemIsBelow(e)
-	local downY = e.y + grid
-
-	local _, _, _, len = world:check(e, e.x, downY)
-
-	if len == 0 then
-		return false
-	end
-	return true
 end

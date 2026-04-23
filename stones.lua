@@ -28,13 +28,10 @@ function updateStones(dt)
 				s.anim:pause()
 			end
 		else
-			if canStoneFall(s) then
-				applyStoneFall(s)
+			if canEntityFall(s) then
+				applyGravity(s)
 			else
-				if canStoneSlide(s) then
-					local slipDir = getEntitySlipDir(s)
-					applyStoneSlip(s, slipDir)
-				end
+				checkAutonomousSlip(s)
 			end
 		end
 	end
@@ -52,7 +49,7 @@ end
 -- moves stone(s)
 function moveStone(s, dir)
 	if canPushEntity(s, dir) == true then
-		local dx = getDirectionOffset(dir, grid)
+		local dx = getDirectionOffset(dir)
 
 		local goalX = s.x + dx
 
@@ -66,35 +63,25 @@ function moveStone(s, dir)
 	end
 end
 
-function canStoneFall(s)
-	local downY = s.y + grid
-
-	local _, _, _, len = world:check(s, s.x, downY)
-
-	if len == 0 then
-		return true
+function checkAutonomousSlip(s)
+	if s.isMoving or s.isFalling then
+		return
 	end
-	return false
-end
 
-function applyStoneFall(s)
-	s.isFalling = true
-	s.startY = s.y
-	s.targetY = s.y + grid
-	s.fallTimer = 0
-	s.fallDuration = 0.3
-
-	s.anim:gotoFrame(1)
-	s.anim:resume()
-end
-
-function canStoneSlide(s)
-	if itemIsBelow(s) then
-		local dir = getEntitySlipDir(s)
-		if dir then
-			return true
+	local _, _, cols, _ = world:check(s, s.x, s.y + grid)
+	local onStone = false
+	for _, col in ipairs(cols) do
+		if col.other.type == "stone" and not col.other.isMoving and not col.other.isFalling then
+			onStone = true
+			break
 		end
-		return false
+	end
+
+	if onStone then
+		local slipDir = getEntitySlipDir(s)
+		if slipDir then
+			applyStoneSlip(s, slipDir)
+		end
 	end
 end
 

@@ -1,5 +1,4 @@
 function love.load()
-	love.math.setRandomSeed(os.time())
 	gameFont = love.graphics.newFont("fonts/Satoshi-Variable.ttf", 15, "normal", 2)
 
 	bump = require("library/bump/bump")
@@ -12,22 +11,27 @@ function love.load()
 
 	world = bump.newWorld(32)
 
-    require("player")
+	require("player")
+	require("stones")
+	require("bush")
+	require("utils")
 
 	walls = {}
 	stones = {}
-	grassTable = {}
+	bushTable = {}
+
+	grid = 32
 
 	sprites = {}
 	sprites.stoneSprite = love.graphics.newImage("sprites_png/aw_stones_tileset.png")
-	sprites.grassSprite = love.graphics.newImage("sprites_png/grass_animation_tileset.png")
+	sprites.bushSprite = love.graphics.newImage("sprites_png/grass_animation_tileset.png")
 
 	local stoneGrid = anim8.newGrid(32, 32, sprites.stoneSprite:getWidth(), sprites.stoneSprite:getHeight())
-	local grassGrid = anim8.newGrid(44, 35, sprites.grassSprite:getWidth(), sprites.grassSprite:getHeight())
+	local bushGrid = anim8.newGrid(44, 35, sprites.bushSprite:getWidth(), sprites.bushSprite:getHeight())
 
 	animations = {}
-	animations.stoneRoll = anim8.newAnimation(stoneGrid("1-3", 1, "1-3", 2, "1-2", 3), 0.1)
-	animations.destroyGrass = anim8.newAnimation(grassGrid("1-8", 1), 0.25)
+	animations.stoneRoll = anim8.newAnimation(stoneGrid("1-3", 1, "1-3", 2, "1-2", 3), 0.15)
+	animations.destroyBush = anim8.newAnimation(bushGrid("1-8", 1), 0.25)
 
 	loadMap("ankgor_watt_intro_level")
 
@@ -44,41 +48,9 @@ function love.update(dt)
 
 	cam:lookAt(camX, camY)
 
-    updatePlayer(dt)
-    
-	for _, s in ipairs(stones) do
-		s.anim:update(dt)
-		if s.isMoving then
-			s.moveTimer = math.min(s.moveTimer + dt, s.moveDuration)
-			local t = s.moveTimer / s.moveDuration
-
-			s.x = s.startX + (s.targetX - s.startX) * t
-
-			if t >= 1 then
-				s.x = s.targetX
-				s.isMoving = false
-
-				world:update(s, s.x, s.y)
-				s.anim:pause()
-			end
-		elseif s.isFalling then
-			s.fallTimer = math.min(s.fallTimer + dt, s.fallDuration)
-			local t = s.fallTimer / s.fallDuration
-
-			s.y = s.startY + (s.targetY - s.startY) * t
-
-			if t >= 1 then
-				s.y = s.targetY
-				s.isFalling = false
-
-				world:update(s, s.x, s.y)
-				s.anim:pause()
-			end
-		end
-	end
-
-	checkStoneGravity()
-	checkStoneonStone()
+	updatePlayer(dt)
+	updateStones(dt)
+	updateBush(dt)
 end
 
 function love.draw()
@@ -87,17 +59,11 @@ function love.draw()
 	gameMap:drawLayer(gameMap.layers["walls"])
 	gameMap:drawLayer(gameMap.layers["statues"])
 	drawStones()
-	--drawGrass()
-	love.graphics.rectangle("line", player.x, player.y, player.w, player.h)
+	-- drawBush()
+	drawPlayer()
 	for _, wall in ipairs(walls) do
 		love.graphics.rectangle("line", wall.x, wall.y, wall.w, wall.h)
 	end
-	for _, stone in ipairs(stones) do
-		love.graphics.rectangle("line", stone.x, stone.y, stone.w, stone.h)
-	end
-	--for _, grass in ipairs(grassTable) do
-	--love.graphics.rectangle("line", grass.x, grass.y, grass.w, grass.h)
-	--end
 	cam:detach()
 	love.graphics.setFont(gameFont)
 	love.graphics.printf(
@@ -109,186 +75,6 @@ function love.draw()
 	)
 	local fps = love.timer.getFPS()
 	love.graphics.print("FPS: " .. fps, 10, 30)
-end
-
-function love.keypressed(key)
-	-- movement mechanism allows for spam
-	local dir = nil
-
-	if key == "w" or key == "up" then
-		dir = "up"
-	elseif key == "a" or key == "left" then
-		dir = "left"
-	elseif key == "s" or key == "down" then
-		dir = "down"
-	elseif key == "d" or key == "right" then
-		dir = "right"
-	end
-
-	if dir then
-		-- if player.isMoving == false
-		if not player.isMoving then
-			tryMove(dir)
-		else
-			table.insert(player.bufferedInput, dir)
-		end
-	end
-end
-
-function tryMove(dir)
-	local dx, dy = 0, 0
-	local grid = 32
-
-	if dir == "up" then
-		dy = -grid
-	elseif dir == "left" then
-		dx = -grid
-	elseif dir == "down" then
-		dy = grid
-	elseif dir == "right" then
-		dx = grid
-	end
-
-	local goalX = player.x + dx
-	local goalY = player.y + dy
-
-	local _, _, cols, len = world:check(player, goalX, goalY)
-
-	local canMove = true
-	if len > 0 then
-		for i, col in ipairs(cols) do
-			if col.other.type == "stone" and not col.other.isMoving then
-				if tryMoveStone(col.other, dir) then
-					canMove = true
-				else
-					canMove = false
-					break -- Exit loop immediately
-				end
-				-- elseif col.other.type == "grass" then
-				-- canMove = true
-				-- trigger animation
-				-- world:remove(col.other)
-				-- if col.other == grass then
-				-- deletion issue
-				-- grass = nil
-				-- end
-			else
-				canMove = false
-			end
-		end
-	end
-
-	if canMove then
-		player.isMoving = true
-		player.startX = player.x
-		player.startY = player.y
-		player.targetX = goalX
-		player.targetY = goalY
-		player.moveTimer = 0
-	end
-end
-
--- checks and moves stone(s)
-function tryMoveStone(s, dir)
-	local dx = 0
-	local grid = 32
-
-	if dir == "up" or dir == "down" then
-		return false
-	end
-
-	if dir == "left" then
-		dx = -grid
-	elseif dir == "right" then
-		dx = grid
-	end
-
-	local goalX = s.x + dx
-
-	local _, _, _, len = world:check(s, goalX, s.y)
-
-	if len == 0 then
-		s.isMoving = true
-		s.startX = s.x
-		s.targetX = goalX
-		s.moveTimer = 0
-
-		s.anim:gotoFrame(1)
-		s.anim:resume()
-		return true
-	end
-	return false
-end
-
-function checkStoneGravity()
-	for _, s in ipairs(stones) do
-		-- s.isMoving and s.isFalling are both false
-		if not s.isMoving and not s.isFalling then
-			local downY = s.y + 32
-			local _, _, cols, len = world:check(s, s.x, downY)
-
-			if len == 0 then
-				s.startY = s.y
-				s.isFalling = true
-				s.targetY = downY
-				s.fallTimer = 0
-
-				s.anim:gotoFrame(1)
-				s.anim:resume()
-			end
-		end
-	end
-end
-
--- this function checks whether a stone is on top of another and checks if it should fall accordingly
-function checkStoneonStone()
-	local grid = 32
-
-	for _, s in ipairs(stones) do
-		if not s.isMoving and not s.isFalling then
-			local downY = s.y + grid
-			local _, _, cols, len = world:check(s, s.x, downY)
-
-			for i, col in ipairs(cols) do
-				if col.other.type == "stone" and not col.other.isMoving and not col.other.isFalling then
-					local left = s.x - grid
-					local right = s.x + grid
-
-					local _, _, _, lSide = world:check(s, left, s.y)
-					local _, _, _, lDiag = world:check(s, left, s.y + grid)
-					local _, _, _, rSide = world:check(s, right, s.y)
-					local _, _, _, rDiag = world:check(s, right, s.y + grid)
-
-					local canGoRight = (rSide == 0 and rDiag == 0)
-					local canGoLeft = (lSide == 0 and lDiag == 0)
-
-					if canGoRight and canGoLeft then
-						if love.math.random() > 0.5 then
-							s.targetX = right
-						else
-							s.targetX = left
-						end
-						s.isMoving = true
-					elseif canGoRight then
-						s.targetX = right
-						s.isMoving = true
-					elseif canGoLeft then
-						s.targetX = left
-						s.isMoving = true
-					end
-
-					if s.isMoving then
-						s.startX = s.x
-						s.moveTimer = 0
-
-						s.anim:gotoFrame(1)
-						s.anim:resume()
-						break
-					end
-				end
-			end
-		end
-	end
 end
 
 function loadMap(mapName)
@@ -314,9 +100,9 @@ function loadMap(mapName)
 
 	world:add(player, player.x, player.y, player.w, player.h)
 
-	-- for _, obj in pairs(gameMap.layers["grass_obj"].objects) do
-	-- spawnGrass(obj.x, obj.y, obj.width, obj.height)
-	-- end
+	--[[for _, obj in pairs(gameMap.layers["grass_obj"].objects) do
+		spawnBush(obj.x, obj.y, obj.width, obj.height)
+	end]]
 end
 
 function spawnWall(x, y, width, height)
@@ -346,7 +132,7 @@ function spawnStone(x, y, width, height)
 			targetY = y,
 			startX = x,
 			startY = y,
-			moveDuration = 0.25,
+			moveDuration = 0.15,
 			moveTimer = 0,
 			isFalling = false,
 			fallTimer = 0,
@@ -358,30 +144,18 @@ function spawnStone(x, y, width, height)
 	end
 end
 
-function spawnGrass(x, y, width, height)
+function spawnBush(x, y, width, height)
 	if width > 0 and height > 0 then
-		local grass = {
+		local bush = {
 			x = x,
 			y = y,
 			w = width,
 			h = height,
-			type = "grass",
-			anim = animations.destroyGrass:clone(),
+			type = "bush",
+			anim = animations.destroyBush:clone(),
 		}
-		grass.anim:pause()
-		world:add(grass, x, y, width, height)
-		table.insert(grassTable, grass)
-	end
-end
-
-function drawStones()
-	for _, stone in ipairs(stones) do
-		stone.anim:draw(sprites.stoneSprite, stone.x, stone.y)
-	end
-end
-
-function drawGrass()
-	for _, grass in ipairs(grassTable) do
-		grass.anim:draw(sprites.grassSprite, grass.x, grass.y)
+		bush.anim:pause()
+		world:add(bush, x, y, width, height)
+		table.insert(bushTable, bush)
 	end
 end

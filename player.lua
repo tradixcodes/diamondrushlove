@@ -7,22 +7,29 @@ player.moveTimer = 0
 player.moveDuration = 0.15
 player.isMoving = false
 
+local function playerFilter(item, other) 
+	if other.type == "wall" then return "slide" end
+	if other.type == "grass" then return "cross" end
+	if other.type == "stone" then return "touch" end
+	return false
+end
+
 function updatePlayer(dt)
 	if player.isMoving then
 		player.moveTimer = math.min(player.moveTimer + dt, player.moveDuration)
 		local t = player.moveTimer / player.moveDuration
 
-		player.x = player.startX + (player.targetX - player.startX) * t
-		player.y = player.startY + (player.targetY - player.startY) * t
+		local goalX = player.startX + (player.targetX - player.startX) * t
+		local goalY = player.startY + (player.targetY - player.startY) * t
 
-		-- update player postion directly to avoid clipping
-		world:update(player, player.x, player.y)
+		local actualX, actualY, cols, len = world:move(player, goalX, goalY, playerFilter)
+		player.x = actualX
+		player.y = actualY
 
 		if t >= 1 then
 			player.x, player.y = player.targetX, player.targetY
+			world:move(player, player.targetX, player.targetY, playerFilter)
 			player.isMoving = false
-
-			world:update(player, player.targetX, player.targetY)
 		end
 	end
 end
@@ -37,7 +44,7 @@ function canPlayerMove(dir)
 	local goalX = player.x + dx
 	local goalY = player.y + dy
 
-	local _, _, cols, len = world:check(player, goalX, goalY)
+	local _, _, cols, len = world:check(player, goalX, goalY, playerFilter)
 
 	if len == 0 then
 		return true
@@ -55,11 +62,13 @@ function canPlayerMove(dir)
 			else
 				return false
 			end
-		elseif other.type == "grass" then
+		elseif other.type == "bush" then
+			return true
 		else
 			return false
 		end
 	end
+	return true
 end
 
 function attemptPlayerMove(dir)

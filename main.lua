@@ -30,13 +30,13 @@ function love.load()
 	local bushGrid = anim8.newGrid(44, 35, sprites.bushSprite:getWidth(), sprites.bushSprite:getHeight())
 
 	animations = {}
-	animations.stoneRoll = anim8.newAnimation(stoneGrid("1-3", 1, "1-3", 2, "1-2", 3), 0.15)
+	animations.stoneRoll = anim8.newAnimation(stoneGrid("1-3", 1, "1-3", 2, "1-2", 3), 0.1)
 	animations.destroyBush = anim8.newAnimation(bushGrid("1-8", 1), 0.25)
 
 	loadMap("ankgor_watt_intro_level")
 
 	-- use for scaling up sprites if the orginal size is smaller than the rendered/desired
-	--love.graphics.setDefaultFilter("nearest", "nearest")
+	-- love.graphics.setDefaultFilter("nearest", "nearest")
 end
 
 function love.update(dt)
@@ -51,7 +51,7 @@ function love.update(dt)
 
 	updatePlayer(dt)
 	updateStones(dt)
-	updateBush(dt)
+	updateBushes(dt)
 end
 
 function love.draw()
@@ -60,7 +60,7 @@ function love.draw()
 	gameMap:drawLayer(gameMap.layers["walls"])
 	gameMap:drawLayer(gameMap.layers["statues"])
 	drawStones()
-	-- drawBush()
+	-- drawBushes()
 	drawPlayer()
 	for _, wall in ipairs(walls) do
 		love.graphics.rectangle("line", wall.x, wall.y, wall.w, wall.h)
@@ -113,6 +113,7 @@ function spawnWall(x, y, width, height)
 			y = y,
 			w = width,
 			h = height,
+			type = "wall",
 		}
 		world:add(wall, x, y, width, height)
 		table.insert(walls, wall)

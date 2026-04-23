@@ -49,28 +49,54 @@ function applyGravity(e)
 end
 
 function getEntitySlipDir(e)
-	local downY = e.y + grid
-	local left, right = e.x - grid, e.x + grid
+    local downY = e.y + grid
+    local left, right = e.x - grid, e.x + grid
 
-	local _, _, _, lSide = world:check(e, left, e.y)
-	local _, _, _, lDiag = world:check(e, left, downY)
-	local _, _, _, rSide = world:check(e, right, e.y)
-	local _, _, _, rDiag = world:check(e, right, downY)
+    local function notSelf(item, other)
+        return other ~= e
+    end
 
-	local canSlipLeft = (lSide == 0 and lDiag == 0)
-	local canSlipRight = (rSide == 0 and rDiag == 0)
+    local lSideCols, lSide = world:queryRect(left,  e.y,   grid, grid, notSelf)
+    local lDiagCols, lDiag = world:queryRect(left,  downY, grid, grid, notSelf)
+    local rSideCols, rSide = world:queryRect(right, e.y,   grid, grid, notSelf)
+    local rDiagCols, rDiag = world:queryRect(right, downY, grid, grid, notSelf)
 
-	print(string.format("L-Side: %d, L-Diag: %d, R-Side: %d, R-Diag: %d", lSide, lDiag, rSide, rDiag))
-	if canSlipLeft and canSlipRight then
-		print("Both sides empty")
-		return love.math.random() > 0.5 and "left" or "right"
-	elseif canSlipLeft then
-		print("The left side is empty")
-		return "left"
-	elseif canSlipRight then
-		print("The right side is empty")
-		return "right"
-	end
-	print("The stone stays where it is")
-	return nil
+    local canSlipLeft  = (lSide == 0 and lDiag == 0)
+    local canSlipRight = (rSide == 0 and rDiag == 0)
+
+    --[[local function printCols(label, cols)
+        for i = 1, #cols do
+            local item = cols[i]  -- queryRect returns items directly, no .other
+            local ox, oy, ow, oh = world:getRect(item)
+            -print(string.format(
+                "%s hit: [%s] at x=%.2f y=%.2f w=%.2f h=%.2f",
+                label,
+                tostring(item.type),
+                ox, oy, ow, oh
+            ))
+        end
+    end
+
+    print(string.format(
+        "Entity at x=%.2f y=%.2f | Querying: left=%.2f right=%.2f downY=%.2f",
+        e.x, e.y, left, right, downY
+    ))
+    print(string.format(
+        "L-Side: %d, L-Diag: %d, R-Side: %d, R-Diag: %d",
+        lSide, lDiag, rSide, rDiag
+    ))
+    printCols("lSide", lSideCols)
+    printCols("lDiag", lDiagCols)
+    printCols("rSide", rSideCols)
+    printCols("rDiag", rDiagCols)
+    ]]
+
+    if canSlipLeft and canSlipRight then
+        return love.math.random() > 0.5 and "left" or "right"
+    elseif canSlipLeft then
+        return "left"
+    elseif canSlipRight then
+        return "right"
+    end
+    return nil
 end

@@ -1,3 +1,10 @@
+<<<<<<< HEAD
 asperite/
 *.tmx
 *.asperite
+=======
+aseprite/
+*.tmx
+*.aseprite
+library/
+>>>>>>> 7cb1e525b31db07eff9bc4bc366f143947ac2bf6

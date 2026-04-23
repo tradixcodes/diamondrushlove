@@ -72,6 +72,7 @@ function checkAutonomousSlip(s)
 	local onStone = false
 	for _, col in ipairs(cols) do
 		if col.other.type == "stone" and not col.other.isMoving and not col.other.isFalling then
+			print("Stone is on another stone")
 			onStone = true
 			break
 		end
@@ -79,7 +80,9 @@ function checkAutonomousSlip(s)
 
 	if onStone then
 		local slipDir = getEntitySlipDir(s)
+		print("This is the slip direction: ", slipDir)
 		if slipDir then
+			print("Stone is sliding")
 			applyStoneSlip(s, slipDir)
 		end
 	end

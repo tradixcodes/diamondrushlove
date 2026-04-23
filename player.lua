@@ -49,6 +49,7 @@ function canPlayerMove(dir)
 		if other.type == "stone" then
 			if not other.isMoving and not other.isFalling and canPushEntity(other, dir) then
 				--trigger stone movement
+				print("The stone is being pushed")
 				moveStone(other, dir)
 				return true
 			else

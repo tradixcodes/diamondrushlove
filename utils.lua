@@ -60,13 +60,17 @@ function getEntitySlipDir(e)
 	local canSlipLeft = (lSide == 0 and lDiag == 0)
 	local canSlipRight = (rSide == 0 and rDiag == 0)
 
+	print(string.format("L-Side: %d, L-Diag: %d, R-Side: %d, R-Diag: %d", lSide, lDiag, rSide, rDiag))
 	if canSlipLeft and canSlipRight then
+		print("Both sides empty")
 		return love.math.random() > 0.5 and "left" or "right"
 	elseif canSlipLeft then
+		print("The left side is empty")
 		return "left"
 	elseif canSlipRight then
+		print("The right side is empty")
 		return "right"
 	end
-
+	print("The stone stays where it is")
 	return nil
 end

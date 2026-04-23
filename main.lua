@@ -160,3 +160,7 @@ function spawnBush(x, y, width, height)
 		table.insert(bushTable, bush)
 	end
 end
+
+function love.conf(t)
+	t.console = true
+end

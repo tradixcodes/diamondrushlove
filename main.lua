@@ -71,7 +71,7 @@ function loadMap(mapName)
         local rows = math.floor(obj.height / TILE)
         for r = row, row + rows - 1 do 
             for c = col, col + cols - 1 do 
-                if grid[r] then grid[r][c] = 1 end -- 1 = solid
+                if grid[r] then grid[r][c] = 1 end -- 1 = solid wall
             end
         end
     end
@@ -83,7 +83,7 @@ function loadMap(mapName)
         local rows = math.floor(obj.height / TILE)
         for r = row, row + rows - 1 do 
             for c = col, col + cols - 1 do 
-                if grid[r] then grid[r][c] = 2 end
+                if grid[r] then grid[r][c] = 2 end --2 = solid rock
             end
         end
     end

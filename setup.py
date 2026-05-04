@@ -2,7 +2,6 @@ import os
 import subprocess
 
 repos = {
-    "library/bump" : "https://github.com/tradixcodes/bump.lua",
     "library/Simple-Tiled-Implementation" : "https://github.com/tradixcodes/Simple-Tiled-Implementation",
     "library/anim8" : "https://github.com/tradixcodes/anim8",
     "library/hump" : "https://github.com/tradixcodes/hump"

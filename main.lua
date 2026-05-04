@@ -5,32 +5,32 @@ local Camera = require("camera")
 TILE = 32
 
 function love.load()
-	love.graphics.setDefaultFilter("nearest", "nearest")
-	GAMEFONT = love.graphics.newFont("/fonts/Satoshi-Variable.ttf", 15, "normal", 2)
-	love.graphics.setFont(GAMEFONT)
+    love.graphics.setDefaultFilter("nearest", "nearest")
+    GAMEFONT = love.graphics.newFont("/fonts/Satoshi-Variable.ttf", 15, "normal", 2)
+    love.graphics.setFont(GAMEFONT)
 
-	Map.load("ankgor_watt_intro_level")
-	Player.init(Map)
-	Camera.init()
+    Map.load("ankgor_watt_intro_level")
+    Player.init(Map)
+    Camera.init()
 end
 
 function love.update(dt)
-	Player.update(dt)
-	local x, y = Player.getPosition()
-	local mapWidth, mapHeight = Map.getSize()
-	Camera.follow(x, y, mapWidth, mapHeight)
+    Player.update(dt)
+    local x, y = Player.getPosition()
+    local mapWidth, mapHeight = Map.getSize()
+    Camera.follow(x, y, mapWidth, mapHeight)
 end
 
 function love.draw()
-	Camera.attach()
-	Map.draw()
-	Player.draw()
-	Camera.detach()
+    Camera.attach()
+    Map.draw()
+    Player.draw()
+    Camera.detach()
 end
 
 function love.keypressed(key)
-	if key == "escape" then
-		love.event.quit()
-	end
-	Player.handleInput(key)
+    if key == "escape" then
+        love.event.quit()
+    end
+    Player.handleInput(key)
 end

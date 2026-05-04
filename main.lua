@@ -7,7 +7,7 @@ TILE = 32
 
 function love.load()
     love.graphics.setDefaultFilter("nearest", "nearest")
-    GAMEFONT = love.graphics.newFont("/fonts/Satoshi-Variable.ttf", 15, "normal", 2)
+    GAMEFONT = love.graphics.newFont("/fonts/Satoshi-Variable.ttf", 10, "normal", 2)
     love.graphics.setFont(GAMEFONT)
 
     Map.load("ankgor_watt_intro_level")

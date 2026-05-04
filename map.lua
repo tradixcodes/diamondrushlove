@@ -19,7 +19,7 @@ local function parseWallObjects(layer)
         for r = row, row + rows - 1 do
             for c = col, col + cols - 1 do
                 if grid[r] then
-                    grid[r][c] = 1
+                    grid[r][c] = 1 -- 1 for wall
                 end
             end
         end
@@ -35,7 +35,7 @@ local function parseStoneObjects(layer)
         for r = row, row + rows - 1 do
             for c = col, col + cols - 1 do
                 if grid[r] then
-                    grid[r][c] = 2
+                    grid[r][c] = 2 -- 2 for stone
                     table.insert(stoneList, { col = c, row = r })
                 end
             end

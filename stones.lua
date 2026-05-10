@@ -17,7 +17,6 @@ local renderPositions = {}
 local sprites         = {}
 local animations      = {}
 
--- ── private helpers ──────────────────────────────────────────────────────────
 local function isRound(col, row)
     local cell = grid[row] and grid[row][col]
     return cell == STONE or cell == DIAMOND
@@ -40,7 +39,6 @@ local function updateStone(i)
     local s = stones[i]
     local below = s.row + 1
 
-    -- rule 1: fall straight down
     if isEmpty(s.col, below) then
         grid[s.row][s.col] = EMPTY
         s.row              = below
@@ -52,7 +50,6 @@ local function updateStone(i)
         return
     end
 
-    -- rule 2: sitting on something round, try to slide off
     if isRound(s.col, below) then
         local leftFree  = isEmpty(s.col - 1, s.row) and isEmpty(s.col - 1, below)
         local rightFree = isEmpty(s.col + 1, s.row) and isEmpty(s.col + 1, below)
@@ -80,7 +77,6 @@ local function updateStone(i)
         end
     end
 
-    -- rule 3: idle
     s.falling     = false
     s.teeterDir   = nil
     s.teeterTimer = 0
@@ -97,7 +93,6 @@ local function updateRender(dt)
     end
 end
 
--- ── public ───────────────────────────────────────────────────────────────────
 local function init(gridRef, stoneList)
     grid                  = gridRef
     stones                = {}
@@ -110,7 +105,6 @@ local function init(gridRef, stoneList)
 
     animations.roll       = anim8.newAnimation(g("1-3", 1, "1-3", 2, "1-2", 3), 0.1)
 
-    -- a static quad for the idle frame so we don't create objects every draw call
     sprites.stoneIdleQuad = love.graphics.newQuad(
         0, 0, 32, 32,
         sprites.stone:getWidth(), sprites.stone:getHeight()
@@ -138,10 +132,33 @@ local function init(gridRef, stoneList)
     end
 end
 
+-- called by player.lua on a horizontal move into a stone cell.
+-- returns true and moves the stone if the cell beyond it is empty,
+-- returns false if the stone is blocked and the player should not move.
+local function tryPush(col, row, dc)
+    for i, s in ipairs(stones) do
+        if s.col == col and s.row == row then
+            local destCol = col + dc
+            if isEmpty(destCol, s.row) then
+                grid[s.row][s.col] = EMPTY
+                s.col = destCol
+                grid[s.row][s.col] = STONE
+                s.falling = false
+                -- reset lerp so the stone visually slides from where it was
+                renderPositions[i].lerpTimer = 0
+                setRenderTarget(i, s.col, s.row)
+                return true
+            else
+                return false
+            end
+        end
+    end
+    return false
+end
+
 local function update(dt)
     updateRender(dt)
 
-    -- only advance the roll animation while at least one stone is moving
     local anyFalling = false
     for _, s in ipairs(stones) do
         if s.falling then
@@ -172,7 +189,6 @@ local function draw()
         if s.falling then
             animations.roll:draw(sprites.stone, r.renderX, r.renderY)
         else
-            -- static first frame, no animation instance created per draw
             love.graphics.draw(sprites.stone, sprites.stoneIdleQuad,
                 r.renderX, r.renderY)
         end
@@ -180,4 +196,4 @@ local function draw()
     love.graphics.setColor(1, 1, 1, 1)
 end
 
-return { init = init, update = update, draw = draw }
+return { init = init, update = update, draw = draw, tryPush = tryPush }

@@ -7,7 +7,7 @@ local mapHeight      = 0
 local playerSpawnCol = 0
 local playerSpawnRow = 0
 local stoneList      = {}
-local bushList       = {} -- new
+local bushList       = {}
 
 local function parseWallObjects(layer)
     for _, obj in ipairs(layer.objects) do
@@ -40,7 +40,6 @@ local function parseStoneObjects(layer)
     end
 end
 
--- mirrors parseStoneObjects exactly, just uses cell value 4 for bush
 local function parseBushObjects(layer)
     for _, obj in ipairs(layer.objects) do
         local col  = math.floor(obj.x / TILE)
@@ -84,11 +83,21 @@ local function drawGrid()
     love.graphics.setColor(1, 1, 1, 1)
 end
 
+-- walls and stones both block movement by default
 local function isSolid(col, row)
     if row < 0 or col < 0 or row >= mapHeight or col >= mapWidth then
         return true
     end
-    return grid[row][col] == 1
+    local cell = grid[row][col]
+    return cell == 1 or cell == 2
+end
+
+-- lets other modules read a raw cell value without touching the grid directly
+local function cellAt(col, row)
+    if row < 0 or col < 0 or row >= mapHeight or col >= mapWidth then
+        return -1
+    end
+    return grid[row][col]
 end
 
 local function load(mapName)
@@ -105,7 +114,7 @@ local function load(mapName)
 
     parseWallObjects(gameMap.layers["walls_obj"])
     parseStoneObjects(gameMap.layers["stones_obj"])
-    parseBushObjects(gameMap.layers["bushes_obj"]) -- new, add this layer in Tiled
+    parseBushObjects(gameMap.layers["bushes_obj"])
     parsePlayerSpawn(gameMap.layers["player_obj"])
 end
 
@@ -118,16 +127,17 @@ end
 local function getSize() return mapWidth, mapHeight end
 local function getSpawn() return playerSpawnCol, playerSpawnRow end
 local function getStones() return stoneList end
-local function getBushes() return bushList end -- new
+local function getBushes() return bushList end
 local function getGrid() return grid end
 
 return {
     load      = load,
     draw      = draw,
     isSolid   = isSolid,
+    cellAt    = cellAt, -- new
     getSize   = getSize,
     getSpawn  = getSpawn,
     getStones = getStones,
-    getBushes = getBushes, -- new
+    getBushes = getBushes,
     getGrid   = getGrid,
 }

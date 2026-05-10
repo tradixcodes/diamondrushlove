@@ -9,8 +9,6 @@ local bushes  = {}
 
 local sprites = {}
 
--- ── private ──────────────────────────────────────────────────────────────────
--- each bush gets its own animation instance so they play independently
 local function newAnim()
     return anim8.newAnimation(
         anim8.newGrid(44, 35,
@@ -20,14 +18,12 @@ local function newAnim()
     )
 end
 
--- ── public ───────────────────────────────────────────────────────────────────
 local function init(gridRef, bushList)
     grid                 = gridRef
     bushes               = {}
 
     sprites.bush         = love.graphics.newImage("sprites_png/bush_animation_tileset.png")
 
-    -- static quad for idle state, same reason as stones
     sprites.bushIdleQuad = love.graphics.newQuad(
         0, 0, 44, 35,
         sprites.bush:getWidth(), sprites.bush:getHeight()
@@ -43,14 +39,13 @@ local function init(gridRef, bushList)
     end
 end
 
--- called by player.lua after the player steps into a cell.
--- safe to call on any cell -- does nothing if there is no bush there.
 local function clear(col, row)
     for _, b in ipairs(bushes) do
         if b.col == col and b.row == row and not b.dying then
             b.dying = true
             b.anim:gotoFrame(1)
-            grid[row][col] = EMPTY -- stone above can now fall next tick
+            b.anim:pauseAtEnd() -- play once, stop on last frame, then cleaned up
+            grid[row][col] = EMPTY
             return
         end
     end
@@ -61,10 +56,11 @@ local function update(dt)
     for _, b in ipairs(bushes) do
         if b.dying then
             b.anim:update(dt)
-            -- keep it only while the animation is still playing
+            -- anim8 sets status to "paused" when pauseAtEnd animation finishes
             if b.anim.status == "playing" then
                 table.insert(alive, b)
             end
+            -- status == "paused" means it finished its one run, drop it
         else
             table.insert(alive, b)
         end

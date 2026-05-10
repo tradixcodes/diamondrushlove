@@ -1,6 +1,8 @@
 local TILE         = 32
+local STONE        = 2 -- only cell type player handles directly
 
-local Bush         = require("bush") -- needed so the player can clear bushes on entry
+local Bush         = require("bush")
+local Stones       = require("stones")
 
 local col          = 3
 local row          = 3
@@ -24,21 +26,29 @@ local function tryMove(dc, dr)
     local targetCol = col + dc
     local targetRow = row + dr
 
-    if not map.isSolid(targetCol, targetRow) then
-        col = targetCol
-        row = targetRow
+    local cell = map.cellAt(targetCol, targetRow)
 
-        -- if the cell we just entered was a bush, clear it.
-        -- Bush.clear is a no-op if there is no bush at this position.
-        Bush.clear(col, row)
-
-        startX    = renderX
-        startY    = renderY
-        targetX   = col * TILE
-        targetY   = row * TILE
-        isMoving  = true
-        moveTimer = 0
+    if cell == STONE then
+        -- stones can only be pushed horizontally and only if the space
+        -- beyond them is empty -- tryPush handles both checks
+        if dr ~= 0 then return end -- no vertical pushing
+        if not Stones.tryPush(targetCol, targetRow, dc) then return end
+        -- push succeeded, player walks into the now-empty cell below
+    elseif map.isSolid(targetCol, targetRow) then
+        return -- wall or out of bounds, block movement
     end
+
+    col = targetCol
+    row = targetRow
+
+    Bush.clear(col, row) -- no-op if no bush here
+
+    startX    = renderX
+    startY    = renderY
+    targetX   = col * TILE
+    targetY   = row * TILE
+    isMoving  = true
+    moveTimer = 0
 end
 
 local function init(mapRef)

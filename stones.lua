@@ -1,19 +1,23 @@
-local TILE = 32
+local TILE            = 32
 
-local EMPTY = 0
-local WALL = 1
-local STONE = 2
-local DIAMOND = 3
+local EMPTY           = 0
+local WALL            = 1
+local STONE           = 2
+local DIAMOND         = 3
 
-local grid = nil
-local stones = {}
-local tickRate = 0.12
-local tickTimer = 0
+local anim8           = require("library/anim8/anim8")
 
--- each stone's visual interpolation
-local renderPositions = {} -- keyed by stone index
+local grid            = nil
+local stones          = {}
+local tickRate        = 0.12
+local tickTimer       = 0
 
--- private: what cells can a stone slide off of
+local renderPositions = {}
+
+local sprites         = {}
+local animations      = {}
+
+-- ── private helpers ──────────────────────────────────────────────────────────
 local function isRound(col, row)
     local cell = grid[row] and grid[row][col]
     return cell == STONE or cell == DIAMOND
@@ -24,104 +28,104 @@ local function isEmpty(col, row)
     return grid[row][col] == EMPTY
 end
 
--- private: core ruler per tick
+local function setRenderTarget(i, col, row)
+    local r   = renderPositions[i]
+    r.startX  = r.renderX
+    r.startY  = r.renderY
+    r.targetX = col * TILE
+    r.targetY = row * TILE
+end
+
 local function updateStone(i)
     local s = stones[i]
+    local below = s.row + 1
 
     -- rule 1: fall straight down
-    if isEmpty(s.col, s.row + 1) then
+    if isEmpty(s.col, below) then
         grid[s.row][s.col] = EMPTY
-        s.row = s.row + 1
+        s.row              = below
         grid[s.row][s.col] = STONE
-        s.falling = true
-        s.teeterDir = nil
-        s.teeterTimer = 0
-
-        -- sync render start
-        renderPositions[i].startX = renderPositions[i].renderX
-        renderPositions[i].startY = renderPositions[i].renderY
-        renderPositions[i].targetX = s.col * TILE
-        renderPositions[i].targetY = s.row * TILE
+        s.falling          = true
+        s.teeterDir        = nil
+        s.teeterTimer      = 0
+        setRenderTarget(i, s.col, s.row)
         return
     end
 
-    -- rule 2: blocked below, check if sitting on something round
-    if isRound(s.col, s.row + 1) then
-        local leftFree = isEmpty(s.col - 1, s.row) and isEmpty(s.col - 1, s.row + 1)
-        local rightFree = isEmpty(s.col + 1, s.row) and isEmpty(s.col + 1, s.row + 1)
+    -- rule 2: sitting on something round, try to slide off
+    if isRound(s.col, below) then
+        local leftFree  = isEmpty(s.col - 1, s.row) and isEmpty(s.col - 1, below)
+        local rightFree = isEmpty(s.col + 1, s.row) and isEmpty(s.col + 1, below)
 
-        -- decide teeter direction
         if leftFree or rightFree then
-            local dir = nil
-            if leftFree and rightFree then
-                dir = "left"
-            elseif leftFree then
-                dir = "left"
-            else
-                dir = "right"
-            end
+            local dir = leftFree and "left" or "right"
 
             if s.teeterDir == dir then
                 s.teeterTimer = s.teeterTimer + 1
                 if s.teeterTimer >= s.teeterDuration then
-                    -- actually slide now
-                    local dc = dir == "left" and -1 or 1
+                    local dc           = dir == "left" and -1 or 1
                     grid[s.row][s.col] = EMPTY
-                    s.col = s.col + dc
+                    s.col              = s.col + dc
                     grid[s.row][s.col] = STONE
-                    s.teeterDir = nil
-                    s.teeterTimer = 0
-                    s.falling = false
-
-                    renderPositions[i].startX = renderPositions[i].renderX
-                    renderPositions[i].startY = renderPositions[i].renderY
-                    renderPositions[i].targetX = s.col * TILE
-                    renderPositions[i].targetY = s.row * TILE
+                    s.teeterDir        = nil
+                    s.teeterTimer      = 0
+                    s.falling          = false
+                    setRenderTarget(i, s.col, s.row)
                 end
             else
-                -- new direction, start teeter
-                s.teeterDir = dir
+                s.teeterDir   = dir
                 s.teeterTimer = 1
             end
             return
         end
     end
-    -- rule 4: idle
-    s.falling = false
-    s.teeterDir = nil
+
+    -- rule 3: idle
+    s.falling     = false
+    s.teeterDir   = nil
     s.teeterTimer = 0
 end
 
--- private: update all visual render positions
 local function updateRender(dt)
-    for i, s in ipairs(stones) do
+    for i in ipairs(stones) do
         local r = renderPositions[i]
         r.lerpTimer = math.min(r.lerpTimer + dt, tickRate)
         local t = r.lerpTimer / tickRate
         t = t * t * (3 - 2 * t)
-
         r.renderX = r.startX + (r.targetX - r.startX) * t
         r.renderY = r.startY + (r.targetY - r.startY) * t
     end
 end
 
--- public
+-- ── public ───────────────────────────────────────────────────────────────────
 local function init(gridRef, stoneList)
-    grid = gridRef
-    stones = {}
-    renderPositions = {}
+    grid                  = gridRef
+    stones                = {}
+    renderPositions       = {}
+
+    sprites.stone         = love.graphics.newImage("sprites_png/aw_stones_tileset.png")
+
+    local g               = anim8.newGrid(32, 32,
+        sprites.stone:getWidth(), sprites.stone:getHeight())
+
+    animations.roll       = anim8.newAnimation(g("1-3", 1, "1-3", 2, "1-2", 3), 0.1)
+
+    -- a static quad for the idle frame so we don't create objects every draw call
+    sprites.stoneIdleQuad = love.graphics.newQuad(
+        0, 0, 32, 32,
+        sprites.stone:getWidth(), sprites.stone:getHeight()
+    )
 
     for _, s in ipairs(stoneList) do
         table.insert(stones, {
-            col = s.col,
-            row = s.row,
-            falling = false,
-            teeterDir = nil,
-            teeterTimer = 0,
-            teeterDuration = 3, --ticks before sliding, tweak for feel
+            col            = s.col,
+            row            = s.row,
+            falling        = false,
+            teeterDir      = nil,
+            teeterTimer    = 0,
+            teeterDuration = 3,
         })
-        local rx = s.col * TILE
-        local ry = s.row * TILE
+        local rx, ry = s.col * TILE, s.row * TILE
         table.insert(renderPositions, {
             renderX = rx,
             renderY = ry,
@@ -137,19 +141,26 @@ end
 local function update(dt)
     updateRender(dt)
 
+    -- only advance the roll animation while at least one stone is moving
+    local anyFalling = false
+    for _, s in ipairs(stones) do
+        if s.falling then
+            anyFalling = true; break
+        end
+    end
+    if anyFalling then
+        animations.roll:update(dt)
+    end
+
     tickTimer = tickTimer + dt
     if tickTimer >= tickRate then
         tickTimer = tickTimer - tickRate
-
-        -- top to bottom so falling stones don't double update
         for i = 1, #stones do
             updateStone(i)
         end
-
-        -- reset lerp timers after tick
-        for i, r in ipairs(renderPositions) do
-            r.startX = r.renderX
-            r.startY = r.renderY
+        for _, r in ipairs(renderPositions) do
+            r.startX    = r.renderX
+            r.startY    = r.renderY
             r.lerpTimer = 0
         end
     end
@@ -158,14 +169,15 @@ end
 local function draw()
     for i, s in ipairs(stones) do
         local r = renderPositions[i]
-        love.graphics.setColor(0.6, 0.5, 0.4, 1)
-        love.graphics.rectangle("fill", r.renderX, r.renderY, TILE, TILE)
+        if s.falling then
+            animations.roll:draw(sprites.stone, r.renderX, r.renderY)
+        else
+            -- static first frame, no animation instance created per draw
+            love.graphics.draw(sprites.stone, sprites.stoneIdleQuad,
+                r.renderX, r.renderY)
+        end
     end
     love.graphics.setColor(1, 1, 1, 1)
 end
 
-return {
-    init = init,
-    update = update,
-    draw = draw,
-}
+return { init = init, update = update, draw = draw }

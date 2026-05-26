@@ -1,3 +1,5 @@
+local UI = require("ui")
+
 local Canvas = {}
 
 local VIRTUAL_W, VIRTUAL_H = 320, 240
@@ -17,12 +19,7 @@ function Canvas.unset()
 end
 
 function Canvas.draw()
-    local winW, winH = love.graphics.getDimensions()
-    local scale = math.min(winW / VIRTUAL_W, winH / VIRTUAL_H)
-    local offsetX = (winW - VIRTUAL_W * scale) / 2
-    local offsetY = (winH - VIRTUAL_H * scale) / 2
-
-    love.graphics.draw(Canvas.buffer, offsetX, offsetY, 0, scale, scale)
+    UI.drawCanvas(Canvas.buffer, VIRTUAL_W, VIRTUAL_H)
 end
 
 return Canvas

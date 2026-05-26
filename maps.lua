@@ -1,4 +1,32 @@
-local function initiateGrid()
-    -- we'll load the gamemap variable like mapheight and mapWidth from any given map then we'll use that information to initialise a grid
-    gameMap = sti("levels/ankgor_watt_intro_level")
+local grid = {}
+local mapWidth = 20
+local mapHeight = 20
+
+local function initializeGrid()
+    for r = 0, mapHeight - 1 do
+        grid[r] = {}
+        for c = 0, mapWidth - 1 do
+            grid[r][c] = 0
+        end
+    end
 end
+
+local function drawGrid()
+    for row = 0, mapHeight - 1 do
+        for col = 0, mapWidth - 1 do
+            local x = col * TILE
+            local y = row * TILE
+
+            love.graphics.setColor(1, 1, 1, 0.15)
+            love.graphics.rectangle("line", x, y, TILE, TILE)
+            love.graphics.setColor(1, 1, 1, 0.4)
+            love.graphics.print(col .. "," .. row, x + 2, y + 2)
+        end
+    end
+    love.graphics.setColor(1, 1, 1, 1)
+end
+
+return {
+    initializeGrid = initializeGrid,
+    drawGrid = drawGrid,
+}

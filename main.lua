@@ -1,25 +1,35 @@
 local Canvas = require("canvas")
-local Map = require("maps")
+local Map = require("map")
 local UI = require("ui")
 
 TILE = 32
 -- main file
 function love.load()
+    -- creates the canvas with the fixed resolution
     Canvas.load()
-    -- 1. Create the world(create a grid)
+    UI.load()
+    -- load grid
     Map.initializeGrid()
 end
 
-function love.update(dt) end
+function love.update(dt)
+    UI.update(dt)
+end
 
 function love.draw()
+    -- you tell LÖVE to stop drawing to the screen and start drawing to your Canvas using Canvas.set()
     Canvas.set()
-    -- game drawing
-    Map.drawGrid()
+    if UI.isInGame() then
+        -- game drawing
+        Map.drawGrid()
+    end
+    UI.draw()
+    -- Detach the canvas (points drawing back to the main window)
     Canvas.unset()
-    Canvas.draw()
+    -- Draw the canvas scaled up to the actual window size
+    UI.drawCanvas(Canvas.buffer, Canvas.VIRTUAL_W, Canvas.VIRTUAL_H)
 end
 
 function love.keypressed(key)
-    if key == "tab" then UI.cycleView() end
+    UI.keypressed(key)
 end

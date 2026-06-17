@@ -7,20 +7,20 @@ Canvas.VIRTUAL_W = VIRTUAL_W
 Canvas.VIRTUAL_H = VIRTUAL_H
 
 function Canvas.load()
-    Canvas.buffer = love.graphics.newCanvas(VIRTUAL_W, VIRTUAL_H)
-    Canvas.buffer:setFilter("nearest", "nearest")
+	Canvas.buffer = love.graphics.newCanvas(VIRTUAL_W, VIRTUAL_H)
+	Canvas.buffer:setFilter("nearest", "nearest")
 end
 
 function Canvas.set()
-    -- sets the created canvas at canvas.load
-    love.graphics.setCanvas(Canvas.buffer)
-    -- Clear the canvas from the last frame
-    love.graphics.clear()
+	-- sets the created canvas at canvas.load
+	love.graphics.setCanvas(Canvas.buffer)
+	-- Clear the canvas from the last frame
+	love.graphics.clear()
 end
 
 function Canvas.unset()
-    -- Detach the canvas (points drawing back to the main window)
-    love.graphics.setCanvas()
+	-- Detach the canvas (points drawing back to the main window)
+	love.graphics.setCanvas()
 end
 
 return Canvas

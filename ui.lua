@@ -29,6 +29,8 @@ local mainItems = { "CONTINUE", "OPTIONS", "CREDITS", "EXIT" } -- items shown on
 local optionItems = { "VIEW MODE", "BACK" } -- items shown in the options screen
 local pauseItems = { "RESUME", "OPTIONS", "EXIT TO MENU" }
 
+local optionsCaller = "main" -- remembers which state opened the options screen
+
 local creditScroll = 0 -- current Y offset of the credits text, decremented each frame to scroll upward
 local creditSpeed = 30 -- how many pixels per second the credits scroll
 
@@ -38,7 +40,7 @@ local arrow = nil -- arrow sprite drawn on either side of the selected menu item
 function UI.load()
 	UI.loadSettings() -- apply saved settings before anything is drawn
 
-	font = love.graphics.newFont("fonts/BoldPixels.ttf", 24) -- load the pixel font at 24px
+	font = love.graphics.newFont("fonts/BoldPixels.ttf", 20) -- load the pixel font at 24px
 	arrow = love.graphics.newImage("sprites_png/menu_arrow.png") -- load the menu cursor arrow sprite
 	love.graphics.setDefaultFilter("nearest", "nearest") -- disable smoothing so pixel art stays sharp
 end
@@ -62,6 +64,7 @@ function UI.keypressed(key)
 			if choice == "CONTINUE" then
 				UI.state = "game" -- hand control back to the game
 			elseif choice == "OPTIONS" then
+				optionsCaller = "main" -- came from main menu
 				UI.state = "options" -- switch to the options screen
 				UI.selected = 1 -- reset cursor to the first option
 			elseif choice == "CREDITS" then
@@ -85,7 +88,7 @@ function UI.keypressed(key)
 				end
 				UI.saveSettings() -- persist the new mode immediately so it survives a restart
 			elseif choice == "BACK" then
-				UI.state = "main" -- return to the main menu
+				UI.state = optionsCaller -- return to the main menu
 				UI.selected = 1 -- reset cursor so it doesn't carry over from options
 			end
 		end
@@ -109,6 +112,7 @@ function UI.keypressed(key)
 				UI.state = "game" -- unpause, game continues from where it was
 				UI.selected = 1
 			elseif choice == "OPTIONS" then
+				optionsCaller = "pause" -- came from the pause menu
 				UI.state = "options"
 				UI.selected = 1
 			elseif choice == "EXIT TO MENU" then

@@ -13,6 +13,9 @@ function love.load()
 end
 
 function love.update(dt)
+	if UI.isInGame() then
+		Map.update(dt)
+	end
 	UI.update(dt)
 end
 

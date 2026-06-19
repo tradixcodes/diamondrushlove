@@ -23,4 +23,27 @@ function Canvas.unset()
 	love.graphics.setCanvas()
 end
 
+function Canvas.getSafeArea(winW, winH)
+	local scale = math.max(winW / VIRTUAL_W, winH / VIRTUAL_H) -- fill mode scale
+	local ox = (winW - VIRTUAL_W * scale) / 2
+	local oy = (winH - VIRTUAL_H * scale) / 2
+
+	-- convert screen crop back into canvas coordinates
+	local safeLeft = math.max(0, -ox / scale)
+	local safeTop = math.max(0, -oy / scale)
+	local safeRight = math.min(VIRTUAL_W, VIRTUAL_W + ox / scale)
+	local safeBottom = math.min(VIRTUAL_H, VIRTUAL_H + oy / scale)
+
+	return {
+		left = safeLeft,
+		top = safeTop,
+		right = safeRight,
+		bottom = safeBottom,
+		width = safeRight - safeLeft,
+		height = safeBottom - safeTop,
+		centerX = safeLeft + (safeRight - safeLeft) / 2,
+		centerY = safeTop + (safeBottom - safeTop) / 2,
+	}
+end
+
 return Canvas

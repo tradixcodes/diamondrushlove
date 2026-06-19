@@ -1,5 +1,6 @@
 local Canvas = require("canvas") -- virtual resolution constants (VIRTUAL_W, VIRTUAL_H)
 local UISave = require("ui_save") -- handles reading/writing settings.json
+local DevTools = require("devtools")
 local UI = {}
 
 UI.viewModes = { "fit", "fill", "stretch" } -- ordered list of scaling modes the player can cycle through
@@ -26,10 +27,12 @@ UI.state = "main" -- which screen is currently active: "main" | "options" | "cre
 UI.selected = 1 -- which menu item the cursor is on (1-based index)
 
 local mainItems = { "CONTINUE", "OPTIONS", "CREDITS", "EXIT" } -- items shown on the main menu
-local optionItems = { "VIEW MODE", "BACK" } -- items shown in the options screen
+local optionItems = { "VIEW MODE", "DEV OPTIONS", "BACK" } -- items shown in the options screen
 local pauseItems = { "RESUME", "OPTIONS", "EXIT TO MENU" }
+local devItems = { "GRID", "FPS", "COORDS", "BACK" }
 
 local optionsCaller = "main" -- remembers which state opened the options screen
+local devCaller = "options" -- dev screen is always opened from options
 
 local creditScroll = 0 -- current Y offset of the credits text, decremented each frame to scroll upward
 local creditSpeed = 30 -- how many pixels per second the credits scroll
@@ -39,10 +42,8 @@ local arrow = nil -- arrow sprite drawn on either side of the selected menu item
 
 function UI.load()
 	UI.loadSettings() -- apply saved settings before anything is drawn
-
-	font = love.graphics.newFont("fonts/BoldPixels.ttf", 20) -- load the pixel font at 24px
+	font = love.graphics.newFont("fonts/BoldPixels.ttf", 24, "normal", 2) -- load the pixel font at 24px
 	arrow = love.graphics.newImage("sprites_png/menu_arrow.png") -- load the menu cursor arrow sprite
-	love.graphics.setDefaultFilter("nearest", "nearest") -- disable smoothing so pixel art stays sharp
 end
 
 -- moves the cursor up or down, wrapping around at either end of the list
@@ -87,6 +88,9 @@ function UI.keypressed(key)
 					UI.currentMode = (UI.currentMode % #UI.viewModes) + 1 -- cycle forward through view modes
 				end
 				UI.saveSettings() -- persist the new mode immediately so it survives a restart
+			elseif choice == "DEV OPTIONS" then
+				UI.state = "dev"
+				UI.selected = 1
 			elseif choice == "BACK" then
 				UI.state = optionsCaller -- return to the main menu
 				UI.selected = 1 -- reset cursor so it doesn't carry over from options
@@ -122,6 +126,26 @@ function UI.keypressed(key)
 		elseif key == "escape" then
 			UI.state = "game" -- escape while paused also resumes
 			UI.selected = 1
+		end
+	elseif UI.state == "dev" then
+		navigate(key, #devItems)
+
+		if key == "return" or key == "space" then
+			local choice = devItems[UI.selected]
+
+			if choice == "GRID" then
+				DevTools.showGrid = not DevTools.showGrid -- flip the toggle
+				UI.saveSettings()
+			elseif choice == "FPS" then
+				DevTools.showFPS = not DevTools.showFPS
+				UI.saveSettings()
+			elseif choice == "COORDS" then
+				DevTools.showCoords = not DevTools.showCoords
+				UI.saveSettings()
+			elseif choice == "BACK" then
+				UI.state = "options"
+				UI.selected = 1
+			end
 		end
 	end
 end
@@ -159,8 +183,9 @@ local function drawMenuItem(text, x, y, isSelected)
 end
 
 local function drawMain()
-	local startY = 100 -- Y position of the first menu item
 	local spacing = 36 -- vertical distance between each item
+	local totalH = #mainItems * spacing
+	local startY = (Canvas.VIRTUAL_H - totalH) / 2 -- center the block vertically
 
 	love.graphics.setFont(font)
 
@@ -172,13 +197,14 @@ local function drawMain()
 end
 
 local function drawOptions()
-	local startY = 90
 	local spacing = 36
+	local totalH = #mainItems * spacing
+	local startY = (Canvas.VIRTUAL_H - totalH) / 2 -- center the block vertically
 
 	love.graphics.setFont(font)
 
 	love.graphics.setColor(1, 0.55, 0, 1) -- orange for section titles
-	love.graphics.print("OPTIONS", centerX("OPTIONS"), 60)
+	love.graphics.print("OPTIONS", centerX("OPTIONS"), 16)
 	love.graphics.setColor(1, 1, 1, 1)
 
 	for i, item in ipairs(optionItems) do
@@ -239,16 +265,43 @@ local function drawPause()
 
 	--title
 	love.graphics.setColor(1, 0.55, 0, 1)
-	love.graphics.print("PAUSED", centerX("PAUSED"), 60)
+	love.graphics.print("PAUSED", centerX("PAUSED"), 16)
 	love.graphics.setColor(1, 1, 1, 1)
 
-	local startY = 100
 	local spacing = 36
+	local totalH = #pauseItems * spacing
+	local startY = (Canvas.VIRTUAL_H - totalH) / 2
 
 	for i, item in ipairs(pauseItems) do
 		local tx = centerX(item)
-		local ty = startY + (i + 1) * spacing
+		local ty = startY + (i - 1) * spacing
 		drawMenuItem(item, tx, ty, UI.selected == i)
+	end
+end
+
+local function drawDev()
+	love.graphics.setFont(font)
+
+	love.graphics.setColor(1, 0.55, 0, 1)
+	love.graphics.print("DEV OPTIONS", centerX("DEV OPTIONS"), 16)
+	love.graphics.setColor(1, 1, 1, 1)
+
+	local spacing = 36
+	local totalH = #pauseItems * spacing
+	local startY = (Canvas.VIRTUAL_H - totalH) / 2
+
+	-- build labels with current toggle state shown inline
+	local labels = {
+		"GRID:     " .. (DevTools.showGrid and "ON" or "OFF"),
+		"FPS:      " .. (DevTools.showFPS and "ON" or "OFF"),
+		"COORDS:   " .. (DevTools.showCoords and "ON" or "OFF"),
+		"BACK",
+	}
+
+	for i, label in ipairs(labels) do
+		local tx = centerX(label)
+		local ty = startY + (i - 1) * spacing
+		drawMenuItem(label, tx, ty, UI.selected == i)
 	end
 end
 
@@ -285,6 +338,8 @@ function UI.draw()
 		drawCredits()
 	elseif UI.state == "pause" then
 		drawPause()
+	elseif UI.state == "dev" then
+		drawDev()
 	end
 end
 
@@ -304,14 +359,30 @@ function UI.cycleView()
 end
 
 function UI.saveSettings()
-	UISave.save({ currentMode = UI.currentMode }) -- serialize current settings into settings.json
+	UISave.save({
+		currentMode = UI.currentMode,
+		showGrid = DevTools.showGrid,
+		showFPS = DevTools.showFPS,
+		showCoords = DevTools.showCoords,
+	}) -- serialize current settings into settings.json
 end
 
 function UI.loadSettings()
 	local data = UISave.load() -- read and decode settings.json if it exists
 
-	if data and data.currentMode then
-		UI.currentMode = data.currentMode -- apply saved mode, leaving all other fields at their defaults if missing
+	if data then
+		if data.currentMode then
+			UI.currentMode = data.currentMode
+		end -- apply saved mode, leaving all other fields at their defaults if missing
+		if data.showGrid ~= nil then
+			DevTools.showGrid = data.showGrid
+		end
+		if data.showFPS ~= nil then
+			DevTools.showFPS = data.showFPS
+		end
+		if data.showCoords ~= nil then
+			DevTools.showCoords = data.showCoords
+		end
 	end
 end
 

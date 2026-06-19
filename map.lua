@@ -1,3 +1,5 @@
+local DevTools = require("devtools")
+
 local grid = {}
 local mapWidth = 20
 local mapHeight = 20
@@ -12,18 +14,17 @@ local function initializeGrid()
 end
 
 local function drawGrid()
-	local gridFont = love.graphics.newFont("fonts/Satoshi-Variable.ttf", 12)
-	love.graphics.setFont(gridFont)
+	if not DevTools.showGrid then
+		return
+	end -- skip entirely if toggled off
 
 	for row = 0, mapHeight - 1 do
 		for col = 0, mapWidth - 1 do
 			local x = col * TILE
 			local y = row * TILE
 
-			love.graphics.setColor(1, 1, 1, 0.15)
+			love.graphics.setColor(1, 1, 1, 0.3)
 			love.graphics.rectangle("line", x, y, TILE, TILE)
-			love.graphics.setColor(1, 1, 1, 0.4)
-			love.graphics.print(col .. "," .. row, x + 2, y + 2)
 		end
 	end
 	love.graphics.setColor(1, 1, 1, 1)

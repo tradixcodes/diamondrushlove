@@ -40,15 +40,11 @@ function love.draw()
 	-- dev overlays draw on top of everything including the pause screen
 	if UI.isInGame() then
 		if DevTools.showFPS then
-			love.graphics.setColor(0, 1, 0, 1)
 			love.graphics.print("FPS: " .. love.timer.getFPS(), 8, 8)
-			love.graphics.setColor(1, 1, 1, 1)
 		end
 
 		if DevTools.showCoords then
-			love.graphics.setColor(0, 1, 1, 1)
-			love.graphics.print("COL: " .. Player.col .. " ROW: " .. Player.row, 8, 24)
-			love.graphics.setColor(1, 1, 1, 1)
+			love.graphics.print("COL: " .. Player.col .. " ROW: " .. Player.row, 8, 28)
 		end
 	end
 end

@@ -14,11 +14,16 @@ function love.load()
 	UI.load()
 	-- load grid
 	Map.initializeGrid()
+	Map.loadLevel("levels/ankgor_watt_intro_level.lua")
+
+	local startCol, startRow = Map.getPlayerStart()
+	Player.load(startCol, startRow)
 end
 
 function love.update(dt)
 	if UI.isInGame() then
 		Map.update(dt)
+		Player.update(dt)
 	end
 	UI.update(dt)
 end
@@ -27,8 +32,9 @@ function love.draw()
 	-- you tell LÖVE to stop drawing to the screen and start drawing to your Canvas using Canvas.set()
 	Canvas.set()
 	if UI.isInGame() then
-		-- game drawing
+		Map.draw()
 		Map.drawGrid()
+		Player.draw()
 	end
 	UI.draw() -- sets the pixel font internally
 	love.graphics.setFont(defaultFont) -- restore after UI is done

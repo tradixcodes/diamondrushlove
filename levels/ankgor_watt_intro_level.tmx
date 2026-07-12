@@ -17,7 +17,7 @@
   <image source="../sprites_png/aw_stones_tileset.png" width="96" height="96"/>
  </tileset>
  <tileset firstgid="64" name="aw_bush" tilewidth="44" tileheight="35" tilecount="8" columns="8">
-  <image source="../sprites_png/bush_animation_tileset.png" width="352" height="35"/>
+  <image source="../sprites_png/grass_animation_tileset.png" width="352" height="35"/>
  </tileset>
  <tileset firstgid="72" name="door" tilewidth="32" tileheight="32" tilecount="21" columns="3">
   <image source="../sprites_png/aw_other_assets.png" width="96" height="224"/>
